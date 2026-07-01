@@ -1,61 +1,50 @@
-# CPBNet: Collaborative Prototype and Boundary Enhancement Network
+# CPBNet: Collaborative Prototype and Boundary Enhancement Network for Semi-Supervised Medical Image Segmentation
 
-Official PyTorch implementation of **Collaborative Prototype and Boundary Enhancement Network for Semi-Supervised Medical Image Segmentation**.
+![](figures/CPBNet_framework.png)
 
-CPBNet is a dual-student semi-supervised medical image segmentation framework. It extends unlabeled supervision from the output space to the **class prototype space** and the **decoder boundary feature space** through:
+> **Collaborative Prototype and Boundary Enhancement Network for Semi-Supervised Medical Image Segmentation**  
+> Cheng Wang, Ran Wang, Xu Liu, Qiqi Fang, Xiaogao Jiang, Qi Luo, Jiawen Zhu, and Wanggen Li  
+> Code: [CPBNet](https://github.com/wangran20021226-crypto/CPBNet)
 
-- **CPAM**: Collaborative Prototype-Aware Module for reliable pixel selection, shared class-prototype construction, and momentum prototype memory.
-- **DBM**: Decoder Boundary Module for boundary-aware decoder feature contrast and boundary tangential-normal anisotropy.
+This is an official PyTorch implementation of **CPBNet: Collaborative Prototype and Boundary Enhancement Network for Semi-Supervised Medical Image Segmentation**.
 
-## Framework
+## Abstract
 
-<p align="center">
-  <img src="assets/framework.png" width="95%">
-</p>
+Semi-supervised medical image segmentation aims to reduce the dependence on dense pixel- or voxel-level annotations by jointly using limited labeled data and abundant unlabeled data. Existing dual-student methods mainly impose supervision in the output or pseudo-label space, which may suffer from pseudo-label noise, cross-branch semantic drift, and weak boundary discrimination.
 
-## Repository structure
+We propose **CPBNet**, a collaborative prototype and boundary enhancement network built on a dual-student mutual learning framework. CPBNet introduces two complementary modules: **Collaborative Prototype-Aware Module (CPAM)** and **Decoder Boundary Enhancement Module (DBM)**. CPAM selects reliable pixels based on cross-branch prediction agreement and confidence, constructs shared class prototypes, and maintains them with a momentum memory bank. DBM explicitly enhances boundary representations in the high-resolution decoder feature space via boundary-aware decoder feature contrast and boundary tangential-normal anisotropy. Experiments on **ACDC**, **LA**, and **BraTS2019** demonstrate that CPBNet achieves competitive semi-supervised segmentation performance under different annotation ratios.
 
-```text
-CPBNet/
-├── CML_ACDC_train.py                  # Training script for ACDC
-├── CML_LA_train.py                    # Training script for LA
-├── test_ACDC.py                       # Evaluation script for ACDC
-├── test_LA.py                         # Evaluation script for LA
-├── run_dbm_dice_3_aggressive.sh       # Example ACDC training script
-├── decoder_boundary_module.py         # DBM implementation
-├── prototype_contrastive_improved.py  # CPAM/prototype learning implementation
-├── dataloaders/                       # Dataset loaders and preprocessing scripts
-├── networks/                          # Network definitions
-└── utils/                             # Training and evaluation utilities
-```
+## Requirements
 
-## Environment
+The experiments in our paper were conducted on an `NVIDIA RTX 3090` GPU. A typical environment is listed below:
 
-The code was developed with PyTorch. A typical environment can be created as follows:
+* Ubuntu 20.04 / 22.04
+* Python 3.8
+* PyTorch >= 1.10
+* CUDA >= 11.3
+
+Install the main dependencies:
 
 ```bash
 conda create -n cpbnet python=3.8 -y
 conda activate cpbnet
 
-# Install PyTorch according to your CUDA version from https://pytorch.org/
+# Please install PyTorch according to your CUDA version.
+# See: https://pytorch.org/get-started/locally/
 pip install torch torchvision torchaudio
 
 pip install numpy scipy scikit-image h5py nibabel SimpleITK medpy tqdm tensorboardX
 ```
 
-> Please adjust the PyTorch/CUDA version according to your GPU driver.
-
 ## Datasets
 
-We evaluate CPBNet on three public medical image segmentation datasets.
+The datasets used in this paper can be downloaded from the following links:
 
-| Dataset | Task | Link |
-|---|---|---|
-| ACDC | 2D cardiac multi-structure segmentation | https://www.creatis.insa-lyon.fr/Challenge/acdc/ |
-| LA | 3D left atrium segmentation | https://www.cardiacatlas.org/atriaseg2018-challenge/ |
-| BraTS2019 | 3D brain tumor segmentation | https://www.med.upenn.edu/cbica/brats2019/data.html |
+* **ACDC**: [Automated Cardiac Diagnosis Challenge](https://www.creatis.insa-lyon.fr/Challenge/acdc/)
+* **LA**: [2018 Atrial Segmentation Challenge](https://www.cardiacatlas.org/atriaseg2018-challenge/)
+* **BraTS2019**: [BraTS 2019 Challenge](https://www.med.upenn.edu/cbica/brats2019/data.html)
 
-After preprocessing, organize the datasets as follows:
+Please preprocess the datasets following the commonly used SSL4MIS/CML data format. The expected directory structure is:
 
 ```text
 data/
@@ -75,23 +64,54 @@ data/
             └── mri_norm2.h5
 ```
 
-The default code paths are `../data/ACDC` and `../data/LA`. You can also pass dataset paths by `--root_path`.
+The default data paths are:
 
-## Training
+```text
+../data/ACDC
+../data/LA
+```
 
-### ACDC
+You can also specify the dataset path using `--root_path`.
 
-For ACDC, `labelnum=3` corresponds to the 5% labeled setting and `labelnum=7` corresponds to the 10% labeled setting.
+## Usage
 
-**10% labeled setting:**
+### Training
+
+To train CPBNet on **ACDC**, run:
+
+```bash
+python CML_ACDC_train.py \
+  --root_path ../data/ACDC \
+  --gpu 0 \
+  --labelnum 7 \
+  --batch_size 24 \
+  --labeled_bs 12 \
+  --pre_iterations 10000 \
+  --train_iterations 30000 \
+  --exp CPBNet_ACDC_10percent
+```
+
+For the **5% labeled** ACDC setting, set `--labelnum 3`:
+
+```bash
+python CML_ACDC_train.py \
+  --root_path ../data/ACDC \
+  --gpu 0 \
+  --labelnum 3 \
+  --batch_size 24 \
+  --labeled_bs 12 \
+  --pre_iterations 10000 \
+  --train_iterations 30000 \
+  --exp CPBNet_ACDC_5percent
+```
+
+You can also run the provided script:
 
 ```bash
 bash run_dbm_dice_3_aggressive.sh
 ```
 
-For LA, `labelnum=4` corresponds to the 5% labeled setting and `labelnum=8` corresponds to the 10% labeled setting.
-
-**10% labeled setting:**
+To train CPBNet on **LA**, run:
 
 ```bash
 python CML_LA_train.py \
@@ -102,11 +122,10 @@ python CML_LA_train.py \
   --labeled_bs 4 \
   --pre_max_iteration 2000 \
   --train_max_iteration 15000 \
-  --base_lr 0.01 \
-  --exp LA_10percent
+  --exp CPBNet_LA_10percent
 ```
 
-**5% labeled setting:**
+For the **5% labeled** LA setting, set `--labelnum 4`:
 
 ```bash
 python CML_LA_train.py \
@@ -117,21 +136,12 @@ python CML_LA_train.py \
   --labeled_bs 4 \
   --pre_max_iteration 2000 \
   --train_max_iteration 15000 \
-  --base_lr 0.01 \
-  --exp LA_5percent
+  --exp CPBNet_LA_5percent
 ```
 
-## Testing
+### Evaluation
 
-### ACDC
-
-Make sure `--exp`, `--labelnum`, and `--stage_name` match the training run. The script loads:
-
-```text
-./model/CML/ACDC_<exp>_<labelnum>_labeled/<stage_name>/unet_best_model.pth
-```
-
-Example:
+To evaluate the model on **ACDC**, run:
 
 ```bash
 python test_ACDC.py \
@@ -140,18 +150,10 @@ python test_ACDC.py \
   --num_classes 4 \
   --labelnum 7 \
   --stage_name train \
-  --exp Run8E_DBM_ClassAlpha_LowThresh
+  --exp CPBNet_ACDC_10percent
 ```
 
-### LA
-
-The LA test script loads:
-
-```text
-./model/CML/LA_<exp>_<labelnum>_labeled/<stage_name>/VNet_best_model.pth
-```
-
-Example:
+To evaluate the model on **LA**, run:
 
 ```bash
 python test_LA.py \
@@ -160,19 +162,19 @@ python test_LA.py \
   --model VNet \
   --labelnum 8 \
   --stage_name train \
-  --exp LA_10percent
+  --exp CPBNet_LA_10percent
 ```
 
-## Notes
+The trained checkpoints are saved under:
 
-- Training consists of a pre-training stage followed by a self-training stage.
-- For ACDC, the default network is `unet` with input size `256 x 256`.
-- For LA, the default network is `VNet` with patch size `112 x 112 x 80`.
-- Current public scripts provide training/testing examples for ACDC and LA. BraTS2019 is included as a dataset used in the paper; please prepare BraTS2019 according to the official challenge format before adding or running BraTS-specific scripts.
+```text
+./model/CML/ACDC_<exp>_<labelnum>_labeled/
+./model/CML/LA_<exp>_<labelnum>_labeled/
+```
 
 ## Citation
 
-If this work is useful for your research, please cite:
+If you find this work useful in your research, please star our repository and consider citing:
 
 ```bibtex
 @article{wang2026cpbnet,
@@ -183,6 +185,10 @@ If this work is useful for your research, please cite:
 }
 ```
 
-## Acknowledgement
+## Contact
 
-This repository is built for semi-supervised medical image segmentation research. We thank the organizers of the ACDC, 2018 Atrial Segmentation Challenge, and BraTS2019 datasets.
+For technical questions, please contact via: `syqkzw@gmail.com`.
+
+## Acknowledgements
+
+Our code is built upon the dual-student mutual learning framework and follows the commonly used semi-supervised medical image segmentation codebase style. We thank the authors of [SSL4MIS](https://github.com/HiLab-git/SSL4MIS), CML, and other open-source semi-supervised medical image segmentation projects for their valuable work.
